@@ -36,14 +36,24 @@ func (p *permitLocks) lock(ctx context.Context, id string) (func(), error) {
 		p.mu.Unlock()
 		return nil, err
 	}
-	<-e.token
-	return func() {
-		e.token <- struct{}{}
+	select {
+	case <-e.token:
+		return func() {
+			e.token <- struct{}{}
+			p.mu.Lock()
+			e.refs--
+			if e.refs == 0 {
+				delete(p.locks, id)
+			}
+			p.mu.Unlock()
+		}, nil
+	case <-ctx.Done():
 		p.mu.Lock()
 		e.refs--
 		if e.refs == 0 {
 			delete(p.locks, id)
 		}
 		p.mu.Unlock()
-	}, nil
+		return nil, ctx.Err()
+	}
 }
