@@ -22,7 +22,7 @@ func (s *Service) CreatePermit(ctx context.Context, cmd CreatePermitCommand) (Pe
 		return PermitView{}, err
 	}
 	b := &domain.PermitBundle{Permit: p, Transitions: []domain.TransitionRecord{tr}}
-	saved, replay, err := s.repo.Create(ctx, b, key)
+	saved, replay, err := s.create(ctx, b, key)
 	if err != nil {
 		return PermitView{}, err
 	}
@@ -40,7 +40,7 @@ func (s *Service) RevisePermit(ctx context.Context, id string, cmd RevisePermitC
 	if issues := domain.ValidateDraftShape(cmd.Draft); len(issues) > 0 {
 		return PermitView{}, domain.NewValidation("DRAFT_INVALID", "许可草稿集合格式无效", issues)
 	}
-	saved, replay, err := s.repo.Mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
+	saved, replay, err := s.mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
 		return b.Permit.ReplaceDraft(cmd.Draft, s.now())
 	})
 	if err != nil {
@@ -57,7 +57,7 @@ func (s *Service) SubmitPermit(ctx context.Context, id string, cmd ActionCommand
 	if err != nil {
 		return PermitView{}, err
 	}
-	saved, replay, err := s.repo.Mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
+	saved, replay, err := s.mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
 		from := b.Permit.Status
 		if from != domain.StatusDraft && from != domain.StatusRevisionsRequired {
 			return domain.NewConflict("SUBMIT_NOT_ALLOWED", "当前状态不允许提交审核")

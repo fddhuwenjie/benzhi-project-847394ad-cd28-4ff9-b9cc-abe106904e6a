@@ -18,7 +18,7 @@ func (s *Service) AssignReview(ctx context.Context, id string, cmd AssignReviewC
 	if err != nil {
 		return PermitView{}, err
 	}
-	saved, replay, err := s.repo.Mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
+	saved, replay, err := s.mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
 		if b.Permit.Status != domain.StatusPendingReview {
 			return domain.NewConflict("ASSIGN_NOT_ALLOWED", "只有待审核许可可以分派审核员")
 		}
@@ -49,7 +49,7 @@ func (s *Service) DecideReview(ctx context.Context, id string, cmd DecideReviewC
 	if err != nil {
 		return PermitView{}, err
 	}
-	saved, replay, err := s.repo.Mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
+	saved, replay, err := s.mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
 		if b.Permit.Status != domain.StatusPendingReview {
 			return domain.NewConflict("DECISION_NOT_ALLOWED", "许可当前不处于待审核状态")
 		}
@@ -111,7 +111,7 @@ func (s *Service) RespondToReview(ctx context.Context, id string, cmd RespondRev
 	if err != nil {
 		return PermitView{}, err
 	}
-	saved, replay, err := s.repo.Mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
+	saved, replay, err := s.mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
 		if b.Permit.Status != domain.StatusRevisionsRequired {
 			return domain.NewConflict("RESPONSES_NOT_ALLOWED", "许可当前不需要整改回应")
 		}

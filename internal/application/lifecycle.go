@@ -14,7 +14,7 @@ func (s *Service) ActivatePermit(ctx context.Context, id string, cmd ActivatePer
 	if err != nil {
 		return PermitView{}, err
 	}
-	saved, replay, err := s.repo.Mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
+	saved, replay, err := s.mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
 		if b.Permit.Status != domain.StatusApproved {
 			return domain.NewConflict("ACTIVATION_NOT_ALLOWED", "只有已批准许可可以激活")
 		}
@@ -53,7 +53,7 @@ func (s *Service) SubmitClosure(ctx context.Context, id string, cmd ClosureComma
 	if err != nil {
 		return PermitView{}, err
 	}
-	saved, replay, err := s.repo.Mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
+	saved, replay, err := s.mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
 		initial := b.Permit.Status == domain.StatusActive
 		resubmission := b.Permit.Status == domain.StatusClosureReview
 		if !initial && !resubmission {
@@ -107,7 +107,7 @@ func (s *Service) VerifyClosure(ctx context.Context, id string, cmd VerifyClosur
 	if err != nil {
 		return PermitView{}, err
 	}
-	saved, replay, err := s.repo.Mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
+	saved, replay, err := s.mutate(ctx, id, cmd.Meta.ExpectedRevision, key, func(b *domain.PermitBundle) error {
 		if b.Permit.Status != domain.StatusClosureReview {
 			return domain.NewConflict("VERIFICATION_NOT_ALLOWED", "许可当前不处于退场核验状态")
 		}
