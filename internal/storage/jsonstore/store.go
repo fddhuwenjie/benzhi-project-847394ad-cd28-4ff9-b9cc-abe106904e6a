@@ -77,12 +77,10 @@ func (s *Store) Mutate(ctx context.Context, id string, expected int64, key appli
 		return nil, false, domain.NewConflict("REVISION_CONFLICT", fmt.Sprintf("当前 revision 为 %d", current.Permit.Revision))
 	}
 	work, err := cloneBundle(current)
+	s.mu.RUnlock()
 	if err != nil {
-		s.mu.RUnlock()
 		return nil, false, err
 	}
-	base := s.doc
-	s.mu.RUnlock()
 	if err := fn(work); err != nil {
 		return nil, false, err
 	}
@@ -92,13 +90,14 @@ func (s *Store) Mutate(ctx context.Context, id string, expected int64, key appli
 		return nil, false, err
 	}
 	index := idempotencyIndex(key)
-	next := cloneDocumentWithBundle(base, id, work, index, idempotencyRecord{Digest: key.Digest, Result: result, CreatedAt: time.Now().UTC()})
+	record := idempotencyRecord{Digest: key.Digest, Result: result, CreatedAt: time.Now().UTC()}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	next := cloneDocumentWithBundle(s.doc, id, work, index, record)
 	if err := saveDocument(s.path, next); err != nil {
 		return nil, false, err
 	}
-	s.mu.Lock()
 	s.doc = next
-	s.mu.Unlock()
 	out, err := cloneBundle(work)
 	return out, false, err
 }
