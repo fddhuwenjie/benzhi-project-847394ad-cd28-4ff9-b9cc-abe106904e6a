@@ -32,6 +32,9 @@ func (s *Store) Create(ctx context.Context, bundle *domain.PermitBundle, key app
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.reloadLocked(); err != nil {
+		return nil, false, err
+	}
 	if got, replay, err := s.replayLocked(key); replay || err != nil {
 		return got, replay, err
 	}
@@ -64,6 +67,9 @@ func (s *Store) Mutate(ctx context.Context, id string, expected int64, key appli
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.reloadLocked(); err != nil {
+		return nil, false, err
+	}
 	if got, replay, err := s.replayLocked(key); replay || err != nil {
 		return got, replay, err
 	}
@@ -130,8 +136,11 @@ func (s *Store) Flush(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.reloadLocked(); err != nil {
+		return err
+	}
 	return saveDocument(s.path, s.doc)
 }
 
@@ -148,6 +157,25 @@ func (s *Store) replayLocked(key application.IdempotencyKey) (*domain.PermitBund
 		return nil, false, fmt.Errorf("读取幂等结果: %w", err)
 	}
 	return &b, true, nil
+}
+
+// reloadLocked re-reads the latest persisted document from disk into the
+// in-memory snapshot. It must be called while holding s.mu (for writes) so
+// that the read-merge-write sequence is atomic with respect to other
+// in-process callers. This closes the cross-process gap: when another
+// process or Store instance sharing the same data path has committed a newer
+// snapshot since this Store opened or last wrote, reloadLocked picks up that
+// state before this Store builds and atomically replaces the snapshot. As a
+// result, concurrently created permits are preserved, and mutations that
+// target a permit whose revision has advanced on disk return an explicit
+// REVISION_CONFLICT instead of silently overwriting the newer state.
+func (s *Store) reloadLocked() error {
+	latest, err := reloadDocument(s.path)
+	if err != nil {
+		return err
+	}
+	s.doc = latest
+	return nil
 }
 
 func idempotencyIndex(key application.IdempotencyKey) string {

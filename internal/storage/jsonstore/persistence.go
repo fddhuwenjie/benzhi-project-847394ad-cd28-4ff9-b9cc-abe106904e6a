@@ -37,6 +37,17 @@ func loadDocument(path string) (*document, error) {
 	return &d, nil
 }
 
+// reloadDocument re-reads the latest persisted document from disk. It is used
+// before committing a write so that concurrent commits from other processes
+// (or other Store instances sharing the same data path) are merged into the
+// freshest on-disk state instead of being silently overwritten by a stale
+// in-memory snapshot captured at Open time. A missing file means the
+// snapshot has not been created yet, which is equivalent to an empty
+// document.
+func reloadDocument(path string) (*document, error) {
+	return loadDocument(path)
+}
+
 func saveDocument(path string, d *document) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
