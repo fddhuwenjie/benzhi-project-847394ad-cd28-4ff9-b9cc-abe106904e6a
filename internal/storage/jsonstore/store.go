@@ -117,7 +117,11 @@ func (s *Store) List(ctx context.Context) ([]*domain.PermitBundle, error) {
 	defer s.mu.RUnlock()
 	out := make([]*domain.PermitBundle, 0, len(s.doc.Permits))
 	for _, bundle := range s.doc.Permits {
-		out = append(out, bundle)
+		copy, err := cloneBundle(bundle)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, copy)
 	}
 	return out, nil
 }
