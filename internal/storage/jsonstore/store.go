@@ -57,7 +57,10 @@ func (s *Store) Create(ctx context.Context, bundle *domain.PermitBundle, key app
 }
 
 func (s *Store) Mutate(ctx context.Context, id string, expected int64, key application.IdempotencyKey, fn func(*domain.PermitBundle) error) (*domain.PermitBundle, bool, error) {
-	unlock := s.locks.lock(id)
+	unlock, err := s.locks.lock(ctx, id)
+	if err != nil {
+		return nil, false, err
+	}
 	defer unlock()
 	if err := ctx.Err(); err != nil {
 		return nil, false, err
