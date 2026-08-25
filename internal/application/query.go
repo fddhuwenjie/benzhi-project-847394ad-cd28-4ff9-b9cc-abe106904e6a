@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
 
@@ -11,7 +12,7 @@ import (
 func (s *Service) GetPermit(ctx context.Context, id string) (PermitView, error) {
 	b, err := s.repo.Get(ctx, id)
 	if err != nil {
-		return PermitView{}, err
+		return PermitView{}, fmt.Errorf("查询许可 %s: %w", id, err)
 	}
 	return viewOf(b, false), nil
 }
