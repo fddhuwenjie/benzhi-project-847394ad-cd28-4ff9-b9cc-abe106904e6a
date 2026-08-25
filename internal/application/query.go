@@ -35,7 +35,7 @@ func (s *Service) ListQueue(ctx context.Context, query QueueQuery) (QueueView, e
 	if !ok {
 		return QueueView{}, domain.NewInternal("存储未提供许可集合快照")
 	}
-	bundles, err := repo.List(ctx)
+	bundles, err := s.collectionSnapshot(ctx, repo)
 	if err != nil {
 		return QueueView{}, err
 	}
