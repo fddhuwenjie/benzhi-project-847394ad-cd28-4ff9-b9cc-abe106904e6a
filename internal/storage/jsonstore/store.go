@@ -12,10 +12,11 @@ import (
 )
 
 type Store struct {
-	path  string
-	mu    sync.RWMutex
-	doc   *document
-	locks *permitLocks
+	path        string
+	mu          sync.RWMutex
+	doc         *document
+	locks       *permitLocks
+	replayCache map[string]*domain.PermitBundle
 }
 
 func Open(path string) (*Store, error) {
@@ -23,7 +24,7 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{path: path, doc: d, locks: newPermitLocks()}, nil
+	return &Store{path: path, doc: d, locks: newPermitLocks(), replayCache: map[string]*domain.PermitBundle{}}, nil
 }
 
 func (s *Store) Create(ctx context.Context, bundle *domain.PermitBundle, key application.IdempotencyKey) (*domain.PermitBundle, bool, error) {
@@ -136,17 +137,22 @@ func (s *Store) Flush(ctx context.Context) error {
 }
 
 func (s *Store) replayLocked(key application.IdempotencyKey) (*domain.PermitBundle, bool, error) {
-	record, ok := s.doc.Idempotency[idempotencyIndex(key)]
+	index := idempotencyIndex(key)
+	record, ok := s.doc.Idempotency[index]
 	if !ok {
 		return nil, false, nil
 	}
 	if record.Digest != key.Digest {
 		return nil, false, domain.NewConflict("REQUEST_ID_REUSED", "request_id 已用于不同载荷")
 	}
+	if cached := s.replayCache[index]; cached != nil {
+		return cached, true, nil
+	}
 	var b domain.PermitBundle
 	if err := json.Unmarshal(record.Result, &b); err != nil {
 		return nil, false, fmt.Errorf("读取幂等结果: %w", err)
 	}
+	s.replayCache[index] = &b
 	return &b, true, nil
 }
 
