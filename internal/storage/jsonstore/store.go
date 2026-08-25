@@ -48,7 +48,7 @@ func (s *Store) Create(ctx context.Context, bundle *domain.PermitBundle, key app
 	}
 	index := idempotencyIndex(key)
 	next := cloneDocumentWithBundle(s.doc, copy.Permit.ID, copy, index, idempotencyRecord{Digest: key.Digest, Result: result, CreatedAt: time.Now().UTC()})
-	if err := saveDocument(s.path, next); err != nil {
+	if err := saveDocument(ctx, s.path, next); err != nil {
 		return nil, false, err
 	}
 	s.doc = next
@@ -88,7 +88,7 @@ func (s *Store) Mutate(ctx context.Context, id string, expected int64, key appli
 	}
 	index := idempotencyIndex(key)
 	next := cloneDocumentWithBundle(s.doc, id, work, index, idempotencyRecord{Digest: key.Digest, Result: result, CreatedAt: time.Now().UTC()})
-	if err := saveDocument(s.path, next); err != nil {
+	if err := saveDocument(ctx, s.path, next); err != nil {
 		return nil, false, err
 	}
 	s.doc = next
@@ -132,7 +132,7 @@ func (s *Store) Flush(ctx context.Context) error {
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return saveDocument(s.path, s.doc)
+	return saveDocument(ctx, s.path, s.doc)
 }
 
 func (s *Store) replayLocked(key application.IdempotencyKey) (*domain.PermitBundle, bool, error) {

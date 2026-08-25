@@ -1,6 +1,7 @@
 package jsonstore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,7 +38,7 @@ func loadDocument(path string) (*document, error) {
 	return &d, nil
 }
 
-func saveDocument(path string, d *document) error {
+func saveDocument(ctx context.Context, path string, d *document) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("创建数据目录: %w", err)
@@ -67,6 +68,9 @@ func saveDocument(path string, d *document) error {
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		return fmt.Errorf("替换数据快照: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	df, err := os.Open(dir)
 	if err == nil {
