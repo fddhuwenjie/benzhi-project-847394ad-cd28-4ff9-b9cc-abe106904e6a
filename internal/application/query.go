@@ -94,7 +94,7 @@ func (s *Service) ListQueue(ctx context.Context, query QueueQuery) (QueueView, e
 	}{query.Statuses, query.SpaceID, query.ReviewerID, query.PlannedStartFrom, query.PlannedEndTo})
 	offset := 0
 	if query.Cursor != "" {
-		offset, err = decodeCursor(query.Cursor, "permit-queue", filter)
+		offset, err = s.cursors.decode(query.Cursor, "permit-queue", filter)
 		if err != nil {
 			return QueueView{}, err
 		}
@@ -112,7 +112,7 @@ func (s *Service) ListQueue(ctx context.Context, query QueueQuery) (QueueView, e
 	}
 	view := QueueView{Items: page, Summary: summary, EvaluatedAt: now}
 	if end < len(items) {
-		view.NextCursor = encodeCursor("permit-queue", filter, end)
+		view.NextCursor = s.cursors.encode("permit-queue", filter, end)
 	}
 	return view, nil
 }
@@ -191,7 +191,7 @@ func (s *Service) QueryTimeline(ctx context.Context, id string, query TimelineQu
 	}{id, query.ActorID, query.RequestID, query.FromStatus, query.ToStatus, query.OccurredFrom, query.OccurredTo})
 	offset := 0
 	if query.Cursor != "" {
-		offset, err = decodeCursor(query.Cursor, "permit-timeline:"+id, filter)
+		offset, err = s.cursors.decode(query.Cursor, "permit-timeline:"+id, filter)
 		if err != nil {
 			return TimelineView{}, err
 		}
@@ -213,7 +213,7 @@ func (s *Service) QueryTimeline(ctx context.Context, id string, query TimelineQu
 		TotalCount: len(events), MatchedCount: len(matched), Events: page, EvaluatedAt: s.now(),
 	}
 	if end < len(matched) {
-		view.NextCursor = encodeCursor("permit-timeline:"+id, filter, end)
+		view.NextCursor = s.cursors.encode("permit-timeline:"+id, filter, end)
 	}
 	return view, nil
 }

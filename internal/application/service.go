@@ -6,13 +6,18 @@ import (
 )
 
 type Service struct {
-	repo  Repository
-	clock Clock
+	repo    Repository
+	clock   Clock
+	cursors *cursorRegistry
 }
 
-func New(repo Repository) *Service { return &Service{repo: repo, clock: realClock{}} }
+func New(repo Repository) *Service {
+	return &Service{repo: repo, clock: realClock{}, cursors: newCursorRegistry()}
+}
 
-func NewWithClock(repo Repository, clock Clock) *Service { return &Service{repo: repo, clock: clock} }
+func NewWithClock(repo Repository, clock Clock) *Service {
+	return &Service{repo: repo, clock: clock, cursors: newCursorRegistry()}
+}
 
 func (s *Service) Flush(ctx context.Context) error { return s.repo.Flush(ctx) }
 
