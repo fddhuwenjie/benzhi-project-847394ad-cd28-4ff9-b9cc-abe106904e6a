@@ -20,13 +20,7 @@ func cloneBundle(in *domain.PermitBundle) (*domain.PermitBundle, error) {
 }
 
 func cloneDocumentWithBundle(d *document, id string, bundle *domain.PermitBundle, idemKey string, idem idempotencyRecord) *document {
-	next := &document{Version: d.Version, Permits: make(map[string]*domain.PermitBundle, len(d.Permits)+1), Idempotency: make(map[string]idempotencyRecord, len(d.Idempotency)+1)}
-	for k, v := range d.Permits {
-		next.Permits[k] = v
-	}
-	for k, v := range d.Idempotency {
-		next.Idempotency[k] = v
-	}
+	next := &document{Version: d.Version, Permits: d.Permits, Idempotency: d.Idempotency}
 	next.Permits[id] = bundle
 	next.Idempotency[idemKey] = idem
 	return next
